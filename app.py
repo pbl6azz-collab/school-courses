@@ -333,6 +333,39 @@ def teacher_progress(course_id):
     progress_data.sort(key=lambda x: x['username'])
     
     return render_template('teacher_progress.html', course=course, progress_data=progress_data)
+@app.route('/submit_quiz/<course_id>/<int:step_index>', methods=['POST'])
+def submit_quiz(course_id, step_index):
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    
+    answer = request.form.get('answer')
+    courses = load_json(COURSES_FILE)
+    course = next((c for c in courses if c['id'] == course_id), None)
+    if not course or step_index >= len(course['steps']):
+        return "Курс или шаг не найден", 404
+
+    step = course['steps'][step_index]
+    if step.get('type') != 'quiz':
+        return "Это не тест", 400
+
+    correct = step.get('correct', -1)
+    try:
+        user_answer = int(answer)
+    except (TypeError, ValueError):
+        user_answer = -1
+
+    # Сохраняем прогресс, только если ответ правильный
+    if user_answer == correct:
+        users = load_json(USERS_FILE)
+        user = users.setdefault(session['username'], {})
+        user_progress = user.setdefault('progress', {})
+        course_progress = user_progress.setdefault(course_id, [])
+        if step_index not in course_progress:
+            course_progress.append(step_index)
+        save_json(USERS_FILE, users)
+
+    # Перенаправляем обратно на курс
+    return redirect(url_for('course', course_id=course_id))
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))

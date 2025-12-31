@@ -103,8 +103,12 @@ function toggleStep(stepIndex, isCompleted) {
 }
 
 function selectOption(element, stepIndex, optionIndex) {
-    const options = document.querySelectorAll(`.quiz-option[data-index][onclick*="stepIndex=${stepIndex}"]`);
-    options.forEach(opt => opt.classList.remove('selected'));
+    const options = document.querySelectorAll(`.quiz-option[data-index]`);
+    options.forEach(opt => {
+        if (opt.onclick && opt.onclick.toString().includes(`stepIndex=${stepIndex}`)) {
+            opt.classList.remove('selected');
+        }
+    });
     element.classList.add('selected');
     document.getElementById(`selected_answer_${stepIndex}`).value = optionIndex;
 }
@@ -119,7 +123,10 @@ function submitQuiz(event, stepIndex, correctIndex) {
 
     const userAnswer = parseInt(selectedValue, 10);
     const resultDiv = document.getElementById(`quiz_result_${stepIndex}`);
-    const options = document.querySelectorAll(`.quiz-option[data-index][onclick*="stepIndex=${stepIndex}"]`);
+    const allOptions = document.querySelectorAll(`.quiz-option[data-index]`);
+    const options = Array.from(allOptions).filter(opt => 
+        opt.onclick && opt.onclick.toString().includes(`stepIndex=${stepIndex}`)
+    );
 
     options.forEach(opt => {
         opt.classList.remove('correct', 'incorrect');
@@ -136,6 +143,9 @@ function submitQuiz(event, stepIndex, correctIndex) {
                 step_index: stepIndex,
                 completed: true
             })
+        }).then(() => {
+            // Обновляем страницу, чтобы прогресс отобразился
+            setTimeout(() => location.reload(), 1000);
         });
     } else {
         resultDiv.innerHTML = '<span style="color:#e74c3c;">❌ Почти! Попробуй ещё раз.</span>';

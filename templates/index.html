@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Мои курсы</h1>
+
+{% if session.is_teacher %}
+    <p><a href="{{ url_for('add_course') }}">+ Добавить новый курс</a></p>
+{% endif %}
+
+{% for course in courses %}
+    <div style="margin: 15px 0;">
+        <h2><a href="{{ url_for('course', course_id=course.id) }}">{{ course.title }}</a></h2>
+    </div>
+{% endfor %}
+{% endblock %}

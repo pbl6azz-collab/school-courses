@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Добавить новый курс</h2>
+<a href="{{ url_for('index') }}">← Назад</a>
+{% if error %}<p style="color:red">{{ error }}</p>{% endif %}
+<form method="post">
+    <label>Название курса:</label>
+    <input type="text" name="title" placeholder="Например: 'Создай калькулятор'" required>
+    <button type="submit">Создать курс</button>
+</form>
+{% endblock %}

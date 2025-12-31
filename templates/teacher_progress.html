@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Прогресс по курсу: {{ course.title }}</h2>
+<p><a href="{{ url_for('course', course_id=course.id) }}">← Назад к курсу</a></p>
+
+{% if not progress_data %}
+    <p>Нет учеников или никто ещё не начал курс.</p>
+{% else %}
+    <table border="1" style="border-collapse: collapse; width: 100%; margin-top: 20px;">
+        <thead>
+            <tr>
+                <th>Ученик</th>
+                {% for i in range(course.steps|length) %}
+                    <th>Шаг {{ i+1 }}</th>
+                {% endfor %}
+                <th>Всего</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pd in progress_data %}
+            <tr>
+                <td><strong>{{ pd.username }}</strong></td>
+                {% for i in range(course.steps|length) %}
+                    <td style="text-align:center;">
+                        {% if i in pd.completed %}
+                            ✅
+                        {% else %}
+                            ❌
+                        {% endif %}
+                    </td>
+                {% endfor %}
+                <td style="text-align:center; font-weight:bold;">
+                    {{ pd.count }}/{{ pd.total }}
+                </td>
+                <td>
+                    <button onclick="resetPassword('{{ pd.username }}')">Сбросить пароль</button>
+                    <span id="pwd_{{ pd.username }}" style="color:green; margin-left:10px;"></span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endif %}
+
+<script>
+function resetPassword(username) {
+    if (!confirm('Сбросить пароль для ' + username + '?')) return;
+    fetch('/teacher/reset_password/' + username, { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('pwd_' + username).textContent = 'Новый пароль: ' + data.new_password;
+            } else {
+                alert('Ошибка');
+            }
+        });
+}
+</script>
+{% endblock %}

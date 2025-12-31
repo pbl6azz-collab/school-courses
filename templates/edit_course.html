@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Редактировать курс: {{ course.title }}</h2>
+<a href="{{ url_for('course', course_id=course.id) }}">← Назад к курсу</a>
+
+<form method="post" enctype="multipart/form-data">
+    <label for="title">Название курса:</label>
+    <input type="text" id="title" name="title" value="{{ course.title }}" required style="width:100%; padding:8px; margin:5px 0;">
+
+    <h3>Шаги:</h3>
+
+    {% for step in course.steps %}
+    <div style="border:1px solid #ccc; padding:15px; margin:15px 0; background:#f9f9f9; border-radius:6px;">
+        <input type="hidden" name="step_id" value="{{ loop.index0 }}">
+
+        <label>Заголовок шага:</label>
+        <input type="text" name="title_{{ loop.index0 }}" value="{{ step.title }}" style="width:100%; padding:6px; margin:4px 0;">
+
+        <label>Описание:</label>
+        <textarea name="content_{{ loop.index0 }}" rows="4" style="width:100%; padding:6px; margin:4px 0;">{{ step.content }}</textarea>
+
+        {% if step.image %}
+        <p><strong>Текущее изображение:</strong><br>
+            <img src="{{ url_for('static', filename=step.image) }}" 
+                 style="max-width:200px; max-height:200px; margin:8px 0; border:1px solid #ddd; border-radius:4px;">
+        </p>
+        {% endif %}
+
+        <label>Заменить изображение (PNG, JPG, GIF):</label>
+        <input type="file" name="image_{{ loop.index0 }}" accept=".png,.jpg,.jpeg,.gif,.webp">
+    </div>
+    {% endfor %}
+
+    <!-- Новый шаг -->
+    <div style="margin:25px 0; padding:15px; border:1px dashed #aaa; background:#fafafa; border-radius:6px;">
+        <strong>+ Добавить новый шаг</strong>
+        <input type="hidden" name="step_id" value="new">
+
+        <label>Заголовок:</label>
+        <input type="text" name="title_new" placeholder="Например: 'Добавь фон игры'" style="width:100%; padding:6px; margin:4px 0;">
+
+        <label>Описание:</label>
+        <textarea name="content_new" rows="4" placeholder="Пошаговая инструкция для ученика..." style="width:100%; padding:6px; margin:4px 0;"></textarea>
+
+        <label>Изображение (опционально):</label>
+        <input type="file" name="image_new" accept=".png,.jpg,.jpeg,.gif,.webp">
+    </div>
+
+    <button type="submit" style="background:#27ae60; color:white; padding:10px 20px; border:none; border-radius:4px; font-size:16px;">
+        Сохранить курс
+    </button>
+</form>
+{% endblock %}

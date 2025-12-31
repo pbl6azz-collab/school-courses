@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ course.title }}</h1>
+<a href="{{ url_for('index') }}">← Назад к курсам</a>
+{% if session.is_teacher %}
+    <p>
+        <a href="{{ url_for('edit_course', course_id=course.id) }}" class="btn">Редактировать курс</a>
+        |
+        <a href="{{ url_for('teacher_progress', course_id=course.id) }}" class="btn">Посмотреть прогресс учеников</a>
+        |
+        <a href="{{ url_for('teacher_logout') }}">Выйти из режима учителя</a>
+    </p>
+{% endif %}<br><br>
+
+{% for step in course.steps %}
+    <div class="step {% if loop.index0 in completed_steps %}completed{% endif %}">
+        <strong>Шаг {{ loop.index }}: {{ step.title }}</strong>
+        {% if step.image %}
+            <div style="text-align:center; margin:10px 0;">
+                <img src="{{ url_for('static', filename=step.image) }}" 
+                     style="max-width:100%; height:auto; border:1px solid #ddd; border-radius:4px;">
+            </div>
+        {% endif %}
+        {% if step.content %}
+            <p>{{ step.content }}</p>
+        {% endif %}
+        <button onclick="toggleStep({{ loop.index0 }}, {{ (loop.index0 in completed_steps) | lower }})">
+            {{ 'Скрыть' if loop.index0 in completed_steps else 'Выполнено!' }}
+        </button>
+    </div>
+{% endfor %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleStep(stepIndex, isCompleted) {
+    fetch('/mark_step', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            course_id: '{{ course.id }}',
+            step_index: stepIndex,
+            completed: !isCompleted
+        })
+    }).then(() => location.reload());
+}
+</script>
+{% endblock %}

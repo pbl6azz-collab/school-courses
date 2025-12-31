@@ -1,0 +1,41 @@
+[
+  {
+    "id": "snake",
+    "title": "Создай игру 'Змейка' на Python",
+    "steps": [
+      {
+        "title": "Установи PyGame",
+        "content": "Напиши в терминале: pip install pygame"
+      },
+      {
+        "title": "Создай окно игры",
+        "content": "Скопируй этот код: ..."
+      },
+      {
+        "title": "Добавь змейку",
+        "content": "Теперь нарисуем змейку..."
+      }
+    ]
+  },
+  {
+    "id": "guess",
+    "title": "Игра 'Угадай число'",
+    "steps": [
+      {
+        "title": "Напиши простой цикл",
+        "content": "Используй random.randint()..."
+      }
+    ]
+  },
+  {
+    "id": "octostudio",
+    "title": "OctoStudio",
+    "steps": [
+      {
+        "title": "das",
+        "content": "asdasd",
+        "image": "uploads/2e862b6032464c25bd20697a887d377c.jpg"
+      }
+    ]
+  }
+]

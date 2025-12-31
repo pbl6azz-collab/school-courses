@@ -187,7 +187,7 @@ def teacher_login():
 @app.route('/teacher/logout')
 def teacher_logout():
     session.pop('is_teacher', None)
-    return redirect(url_url('index'))
+    return redirect(url_for('index'))
 
 @app.route('/teacher/add_course', methods=['GET', 'POST'])
 def add_course():

@@ -88,23 +88,34 @@ def index():
 def course(course_id):
     if 'username' not in session:
         return redirect(url_for('login'))
-    courses = load_json(COURSES_FILE)
-    course = next((c for c in courses if c['id'] == course_id), None)
-    if not course:
-        return "Курс не найден", 404
+    try:
+        courses = load_json(COURSES_FILE)
+        course = next((c for c in courses if c['id'] == course_id), None)
+        if not course:
+            return "Курс не найден", 404
 
-    users = load_json(USERS_FILE)
-    progress = users.get(session['username'], {}).get('progress', {})
-    completed_steps_raw = progress.get(course_id, [])
-    completed_steps = []
-    if isinstance(completed_steps_raw, list):
-        for x in completed_steps_raw:
-            try:
-                completed_steps.append(int(x))
-            except (ValueError, TypeError):
-                pass
+        # Валидация шагов
+        for step in course.get('steps', []):
+            if step.get('type') == 'quiz':
+                if not isinstance(step.get('options'), list):
+                    step['options'] = []
+                if not isinstance(step.get('correct'), int):
+                    step['correct'] = 0
 
-    return render_template('course.html', course=course, completed_steps=completed_steps)
+        users = load_json(USERS_FILE)
+        progress = users.get(session['username'], {}).get('progress', {})
+        completed_steps_raw = progress.get(course_id, [])
+        completed_steps = []
+        if isinstance(completed_steps_raw, list):
+            for x in completed_steps_raw:
+                try:
+                    completed_steps.append(int(x))
+                except (ValueError, TypeError):
+                    pass
+
+        return render_template('course.html', course=course, completed_steps=completed_steps)
+    except Exception as e:
+        return f"Ошибка в курсе: {str(e)}", 500
 
 @app.route('/mark_step', methods=['POST'])
 def mark_step():
@@ -343,4 +354,4 @@ def teacher_progress(course_id):
 # --- Запуск ---
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=port, debug=True)

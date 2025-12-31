@@ -39,9 +39,10 @@
         <div style="margin:15px 0;">
           <p><strong>{{ step.question }}</strong></p>
           <form id="quiz_form_{{ loop.index0 }}" onsubmit="submitQuiz(event, {{ loop.index0 }}, {{ step.correct }})">
+            {% set step_index = loop.index0 %}
             {% for option in step.options %}
-              <label style="display: block; margin: 8px 0; padding: 10px; border: 1px solid #ddd; border-radius: 6px; cursor: pointer;">
-                <input type="radio" name="answer_{{ loop.parentloop.index0 }}" value="{{ loop.index0 }}" required>
+             <label style="display: block; margin: 8px 0; padding: 10px; border: 1px solid #ddd; border-radius: 6px; cursor: pointer;">
+                <input type="radio" name="answer_{{ step_index }}" value="{{ loop.index0 }}" required>
                 {{ option }}
               </label>
             {% endfor %}

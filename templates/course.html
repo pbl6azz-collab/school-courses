@@ -35,32 +35,46 @@
     <div class="step-content">
       <div class="step-title">{{ step.title }}</div>
 
-      {% if step.type == 'quiz' %}
-  <div class="quiz-container" style="margin:25px 0; background:#f8fafc; border-radius:16px; padding:25px; box-shadow:0 4px 12px rgba(0,0,0,0.06);">
-    <h3 style="margin-top:0; color:#2d3748;">{{ step.question }}</h3>
-    
-    <form method="POST" action="{{ url_for('submit_quiz', course_id=course.id, step_index=loop.index0) }}" style="margin-top:20px;">
-      {% for option in step.options %}
-        <div style="margin:10px 0;">
-          <label style="font-size:1.05rem; cursor:pointer; display:block; padding:12px; border:2px solid #e2e8f0; border-radius:10px;">
-            <input type="radio" name="answer" value="{{ loop.index0 }}" required> {{ option }}
-          </label>
+      {% if step.type is defined and step.type == 'quiz' %}
+        <div class="quiz-container" style="margin:25px 0; background:#f8fafc; border-radius:16px; padding:25px; box-shadow:0 4px 12px rgba(0,0,0,0.06);">
+          <h3 style="margin-top:0; color:#2d3748;">{{ step.question }}</h3>
+          
+          <form id="quiz_form_{{ loop.index0 }}" onsubmit="submitQuiz(event, {{ loop.index0 }}, {{ step.correct }})" style="margin-top:20px;">
+            {% set step_index = loop.index0 %}
+            {% for option in step.options %}
+              <div class="quiz-option" 
+                   onclick="selectOption(this, {{ step_index }}, {{ loop.index0 }})"
+                   data-index="{{ loop.index0 }}"
+                   style="padding:16px; margin:10px 0; background:#fff; border:2px solid #e2e8f0; border-radius:12px; cursor:pointer; transition:all 0.2s; font-size:1.05rem;">
+                {{ option }}
+              </div>
+            {% endfor %}
+            
+            <input type="hidden" id="selected_answer_{{ step_index }}" name="selected_answer" required>
+            
+            <button type="submit" class="btn" style="margin-top:20px; width:100%; padding:14px; font-size:1.1rem;">
+              Проверить ответ
+            </button>
+          </form>
+          
+          <div id="quiz_result_{{ loop.index0 }}" style="margin-top:15px; font-size:1.1rem; font-weight:bold; min-height:28px;"></div>
         </div>
-      {% endfor %}
       
-      <button type="submit" class="btn" style="margin-top:20px; width:100%; padding:14px; font-size:1.1rem;">
-        Ответить
-      </button>
-    </form>
-  </div>
-{% endif %}
+      {% else %}
+        {% if step.image %}
+          <div style="text-align: center; margin: 15px 0;">
+            <img src="{{ url_for('static', filename=step.image) }}" 
+                 alt="Иллюстрация к шагу {{ loop.index }}"
+                 style="max-width: 100%; height: auto; border-radius: 10px; box-shadow: 0 3px 10px rgba(0,0,0,0.1);">
+          </div>
+        {% endif %}
 
         {% if step.content %}
           <div class="step-text">{{ step.content }}</div>
         {% endif %}
       {% endif %}
 
-      {% if step.type != 'quiz' %}
+      {% if not (step.type is defined and step.type == 'quiz') %}
         <button class="{% if loop.index0 in completed_steps %}btn-success{% else %}btn{% endif %}"
                 onclick="toggleStep({{ loop.index0 }}, {{ (loop.index0 in completed_steps) | lower }})">
           {{ 'Скрыть' if loop.index0 in completed_steps else 'Выполнено!' }}
@@ -78,7 +92,7 @@ function toggleStep(stepIndex, isCompleted) {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
             course_id: '{{ course.id }}',
-            step_index: parseInt(stepIndex, 10),
+            step_index: stepIndex,
             completed: !isCompleted
         })
     }).then(() => {
@@ -126,7 +140,7 @@ function submitQuiz(event, stepIndex, correctIndex) {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 course_id: '{{ course.id }}',
-                step_index: parseInt(stepIndex, 10),
+                step_index: stepIndex,
                 completed: true
             })
         }).then(() => {

@@ -5,6 +5,7 @@ import uuid
 from werkzeug.utils import secure_filename
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 
+# --- Вспомогательные функции ---
 def hash_password(pw):
     return hashlib.sha256(pw.encode()).hexdigest()
 
@@ -12,21 +13,27 @@ def allowed_file(filename):
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+# --- Настройки ---
 TEACHER_PASSWORD = os.getenv('TEACHER_PASSWORD', 'default_password_change_me')
 TEACHER_PASSWORD_HASH = hash_password(TEACHER_PASSWORD)
 
+# --- Инициализация Flask ---
 app = Flask(__name__)
-app.secret_key = os.getenv('SECRET_KEY', 'fallback-secret-key')
+app.secret_key = os.getenv('SECRET_KEY', 'fallback-secret-key-for-dev')
 
+# --- Загрузка файлов ---
 UPLOAD_FOLDER = 'static/uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
+# --- Пути к данным ---
 DATA_DIR = 'data'
 COURSES_FILE = os.path.join(DATA_DIR, 'courses.json')
 USERS_FILE = os.path.join(DATA_DIR, 'users.json')
+
 os.makedirs(DATA_DIR, exist_ok=True)
 
+# --- Инициализация данных ---
 if not os.path.exists(COURSES_FILE):
     with open(COURSES_FILE, 'w', encoding='utf-8') as f:
         json.dump([
@@ -37,14 +44,19 @@ if not os.path.exists(COURSES_FILE):
                     {
                         "type": "lesson",
                         "title": "Установи PyGame",
-                        "content": "Открой терминал и выполни:\n\npip install pygame",
+                        "content": "Открой терминал и выполни команду:\n\npip install pygame",
                         "image": None
                     },
                     {
                         "type": "quiz",
                         "title": "Проверь себя",
-                        "question": "Что делает 'pip install'?",
-                        "options": ["Удаляет пакет", "Устанавливает пакет", "Обновляет Python", "Создаёт проект"],
+                        "question": "Что делает команда 'pip install pygame'?",
+                        "options": [
+                            "Удаляет PyGame",
+                            "Устанавливает библиотеку PyGame",
+                            "Запускает игру",
+                            "Создаёт папку"
+                        ],
                         "correct": 1
                     }
                 ]
@@ -55,6 +67,7 @@ if not os.path.exists(USERS_FILE):
     with open(USERS_FILE, 'w', encoding='utf-8') as f:
         json.dump({}, f, ensure_ascii=False, indent=2)
 
+# --- Вспомогательные функции ---
 def load_json(filepath):
     with open(filepath, 'r', encoding='utf-8') as f:
         return json.load(f)
@@ -63,6 +76,7 @@ def save_json(filepath, data):
     with open(filepath, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
+# --- Основные маршруты ---
 @app.route('/')
 def index():
     if 'username' not in session:
@@ -74,40 +88,47 @@ def index():
 def course(course_id):
     if 'username' not in session:
         return redirect(url_for('login'))
-    courses = load_json(COURSES_FILE)
-    course = next((c for c in courses if c['id'] == course_id), None)
-    if not course:
-        return "Курс не найден", 404
+    try:
+        courses = load_json(COURSES_FILE)
+        course_data = next((c for c in courses if c['id'] == course_id), None)
+        if not course_data:
+            return "Курс не найден", 404
 
-    users = load_json(USERS_FILE)
-    progress = users.get(session['username'], {}).get('progress', {})
-    completed_steps_raw = progress.get(course_id, [])
-    completed_steps = []
-    if isinstance(completed_steps_raw, list):
-        for x in completed_steps_raw:
-            try:
-                completed_steps.append(int(x))
-            except (ValueError, TypeError):
-                pass
+        # ВАЛИДАЦИЯ ШАГОВ: гарантируем, что у каждого шага есть type
+        for step in course_data.get('steps', []):
+            if 'type' not in step:
+                step['type'] = 'lesson'
+            if step['type'] == 'quiz':
+                if not isinstance(step.get('options'), list):
+                    step['options'] = []
+                if not isinstance(step.get('correct'), int):
+                    step['correct'] = 0
+                if 'question' not in step:
+                    step['question'] = "Вопрос отсутствует"
 
-    return render_template('course.html', course=course, completed_steps=completed_steps)
+        users = load_json(USERS_FILE)
+        progress = users.get(session['username'], {}).get('progress', {})
+        completed_steps_raw = progress.get(course_id, [])
+        completed_steps = []
+        if isinstance(completed_steps_raw, list):
+            for x in completed_steps_raw:
+                try:
+                    completed_steps.append(int(x))
+                except (ValueError, TypeError):
+                    pass
+
+        return render_template('course.html', course=course_data, completed_steps=completed_steps)
+    except Exception as e:
+        return f"Ошибка в курсе: {str(e)}", 500
 
 @app.route('/mark_step', methods=['POST'])
 def mark_step():
     if 'username' not in session:
         return jsonify(success=False)
-    data = request.get_json()
-    if not data:
-        return jsonify(success=False)
-
+    data = request.json
     course_id = data.get('course_id')
     step_index = data.get('step_index')
     completed = data.get('completed', False)
-
-    try:
-        step_index = int(step_index)
-    except (TypeError, ValueError):
-        return jsonify(success=False)
 
     users = load_json(USERS_FILE)
     user = users.setdefault(session['username'], {})
@@ -170,7 +191,7 @@ def teacher_login():
 @app.route('/teacher/logout')
 def teacher_logout():
     session.pop('is_teacher', None)
-    return redirect(url_for('index'))  # ← ИСПРАВЛЕНО: было url_url
+    return redirect(url_for('index'))  # ✅ Исправлено: url_for, не url_url
 
 @app.route('/teacher/add_course', methods=['GET', 'POST'])
 def add_course():
@@ -333,40 +354,8 @@ def teacher_progress(course_id):
     progress_data.sort(key=lambda x: x['username'])
     
     return render_template('teacher_progress.html', course=course, progress_data=progress_data)
-@app.route('/submit_quiz/<course_id>/<int:step_index>', methods=['POST'])
-def submit_quiz(course_id, step_index):
-    if 'username' not in session:
-        return redirect(url_for('login'))
-    
-    answer = request.form.get('answer')
-    courses = load_json(COURSES_FILE)
-    course = next((c for c in courses if c['id'] == course_id), None)
-    if not course or step_index >= len(course['steps']):
-        return "Курс или шаг не найден", 404
 
-    step = course['steps'][step_index]
-    if step.get('type') != 'quiz':
-        return "Это не тест", 400
-
-    correct = step.get('correct', -1)
-    try:
-        user_answer = int(answer)
-    except (TypeError, ValueError):
-        user_answer = -1
-
-    # Сохраняем прогресс, только если ответ правильный
-    if user_answer == correct:
-        users = load_json(USERS_FILE)
-        user = users.setdefault(session['username'], {})
-        user_progress = user.setdefault('progress', {})
-        course_progress = user_progress.setdefault(course_id, [])
-        if step_index not in course_progress:
-            course_progress.append(step_index)
-        save_json(USERS_FILE, users)
-
-    # Перенаправляем обратно на курс
-    return redirect(url_for('course', course_id=course_id))
-
+# --- Запуск ---
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port, debug=False)

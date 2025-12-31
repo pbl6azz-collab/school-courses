@@ -92,7 +92,7 @@ function toggleStep(stepIndex, isCompleted) {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
             course_id: '{{ course.id }}',
-            step_index: stepIndex,
+            step_index: parseInt(stepIndex, 10),
             completed: !isCompleted
         })
     }).then(() => {
@@ -140,11 +140,10 @@ function submitQuiz(event, stepIndex, correctIndex) {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 course_id: '{{ course.id }}',
-                step_index: stepIndex,
+                step_index: parseInt(stepIndex, 10),
                 completed: true
             })
         }).then(() => {
-            // Обновляем страницу, чтобы прогресс отобразился
             setTimeout(() => location.reload(), 1000);
         });
     } else {

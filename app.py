@@ -1,9 +1,9 @@
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
-import json
 import os
+import json
 import hashlib
 import uuid
 from werkzeug.utils import secure_filename
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 
 # --- Вспомогательные функции ---
 def hash_password(pw):
@@ -13,15 +13,15 @@ def allowed_file(filename):
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# --- Настройки безопасности ---
-TEACHER_PASSWORD = os.getenv('TEACHER_PASSWORD', 'fallback_password')
+# --- Настройки ---
+TEACHER_PASSWORD = os.getenv('TEACHER_PASSWORD', 'default_password_change_me')
 TEACHER_PASSWORD_HASH = hash_password(TEACHER_PASSWORD)
 
 # --- Инициализация Flask ---
 app = Flask(__name__)
-app.secret_key = 'your-very-secret-key-change-in-production'
+app.secret_key = os.getenv('SECRET_KEY', 'fallback-secret-key-for-dev')
 
-# --- Конфигурация загрузки файлов ---
+# --- Загрузка файлов ---
 UPLOAD_FOLDER = 'static/uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -31,9 +31,9 @@ DATA_DIR = 'data'
 COURSES_FILE = os.path.join(DATA_DIR, 'courses.json')
 USERS_FILE = os.path.join(DATA_DIR, 'users.json')
 
-# --- Инициализация данных (если нет файлов) ---
 os.makedirs(DATA_DIR, exist_ok=True)
 
+# --- Инициализация данных ---
 if not os.path.exists(COURSES_FILE):
     with open(COURSES_FILE, 'w', encoding='utf-8') as f:
         json.dump([
@@ -42,14 +42,22 @@ if not os.path.exists(COURSES_FILE):
                 "title": "Создай игру 'Змейка' на Python",
                 "steps": [
                     {
+                        "type": "lesson",
                         "title": "Установи PyGame",
                         "content": "Открой терминал и выполни команду:\n\npip install pygame",
                         "image": None
                     },
                     {
-                        "title": "Создай окно игры",
-                        "content": "Скопируй этот код в файл snake.py и запусти:",
-                        "image": None
+                        "type": "quiz",
+                        "title": "Проверь себя",
+                        "question": "Что делает команда 'pip install pygame'?",
+                        "options": [
+                            "Удаляет PyGame",
+                            "Устанавливает библиотеку PyGame",
+                            "Запускает игру",
+                            "Создаёт папку"
+                        ],
+                        "correct": 1
                     }
                 ]
             }
@@ -59,7 +67,7 @@ if not os.path.exists(USERS_FILE):
     with open(USERS_FILE, 'w', encoding='utf-8') as f:
         json.dump({}, f, ensure_ascii=False, indent=2)
 
-# --- Вспомогательные функции для работы с JSON ---
+# --- Вспомогательные функции ---
 def load_json(filepath):
     with open(filepath, 'r', encoding='utf-8') as f:
         return json.load(f)
@@ -68,7 +76,7 @@ def save_json(filepath, data):
     with open(filepath, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-# --- Маршруты: Основные страницы ---
+# --- Основные маршруты ---
 @app.route('/')
 def index():
     if 'username' not in session:
@@ -85,7 +93,6 @@ def course(course_id):
     if not course:
         return "Курс не найден", 404
 
-    # Безопасная загрузка прогресса как списка целых чисел
     users = load_json(USERS_FILE)
     progress = users.get(session['username'], {}).get('progress', {})
     completed_steps_raw = progress.get(course_id, [])
@@ -96,7 +103,6 @@ def course(course_id):
                 completed_steps.append(int(x))
             except (ValueError, TypeError):
                 pass
-    # если строка или что-то другое — оставляем пустой список
 
     return render_template('course.html', course=course, completed_steps=completed_steps)
 
@@ -122,7 +128,7 @@ def mark_step():
     save_json(USERS_FILE, users)
     return jsonify(success=True)
 
-# --- Маршруты: Ученики ---
+# --- Ученики ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -156,7 +162,7 @@ def logout():
     session.pop('username', None)
     return redirect(url_for('login'))
 
-# --- Маршруты: Учитель ---
+# --- Учитель ---
 @app.route('/teacher/login', methods=['GET', 'POST'])
 def teacher_login():
     if request.method == 'POST':
@@ -170,7 +176,7 @@ def teacher_login():
 @app.route('/teacher/logout')
 def teacher_logout():
     session.pop('is_teacher', None)
-    return redirect(url_for('index'))
+    return redirect(url_url('index'))
 
 @app.route('/teacher/add_course', methods=['GET', 'POST'])
 def add_course():
@@ -180,7 +186,6 @@ def add_course():
         title = request.form.get('title', '').strip()
         if not title:
             return render_template('add_course.html', error="Укажите название курса")
-        # Генерация уникального ID
         course_id = title.lower().replace(' ', '_').replace('-', '_').replace('.', '')
         courses = load_json(COURSES_FILE)
         base_id = course_id
@@ -213,45 +218,92 @@ def edit_course(course_id):
 
         for step_id in step_ids:
             if step_id == 'new':
+                step_type = request.form.get('type_new', 'lesson')
                 title = request.form.get('title_new', '').strip()
-                content = request.form.get('content_new', '').strip()
-                image = None
-                image_file = request.files.get('image_new')
+                if step_type == 'quiz':
+                    question = request.form.get('question_new', '').strip()
+                    options_raw = request.form.get('options_new', '').strip()
+                    options = [opt.strip() for opt in options_raw.split('\n') if opt.strip()]
+                    try:
+                        correct = int(request.form.get('correct_new', 1)) - 1
+                    except:
+                        correct = 0
+                    if title and question and options:
+                        steps.append({
+                            "type": "quiz",
+                            "title": title,
+                            "question": question,
+                            "options": options,
+                            "correct": correct
+                        })
+                else:
+                    content = request.form.get('content_new', '').strip()
+                    image = None
+                    image_file = request.files.get('image_new')
+                    if image_file and allowed_file(image_file.filename):
+                        filename = secure_filename(image_file.filename)
+                        ext = filename.rsplit('.', 1)[1].lower()
+                        unique_name = f"{uuid.uuid4().hex}.{ext}"
+                        filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_name)
+                        image_file.save(filepath)
+                        image = f"uploads/{unique_name}"
+                    if title or content or image:
+                        steps.append({
+                            "type": "lesson",
+                            "title": title,
+                            "content": content,
+                            "image": image
+                        })
             else:
                 try:
                     idx = int(step_id)
                     if idx < len(course['steps']):
+                        step = course['steps'][idx]
+                        step_type = step.get('type', 'lesson')
                         title = request.form.get(f'title_{step_id}', '').strip()
-                        content = request.form.get(f'content_{step_id}', '').strip()
-                        # Сохраняем старую картинку, если не загружена новая
-                        image = course['steps'][idx].get('image')
-                        image_file = request.files.get(f'image_{step_id}')
-                    else:
-                        continue
+                        if step_type == 'quiz':
+                            question = request.form.get(f'question_{step_id}', step.get('question', '')).strip()
+                            options_raw = request.form.get(f'options_{step_id}', '\n'.join(step.get('options', []))).strip()
+                            options = [opt.strip() for opt in options_raw.split('\n') if opt.strip()]
+                            try:
+                                correct = int(request.form.get(f'correct_{step_id}', step.get('correct', 0) + 1)) - 1
+                            except:
+                                correct = step.get('correct', 0)
+                            if title and question and options:
+                                steps.append({
+                                    "type": "quiz",
+                                    "title": title,
+                                    "question": question,
+                                    "options": options,
+                                    "correct": correct
+                                })
+                        else:
+                            content = request.form.get(f'content_{step_id}', step.get('content', '')).strip()
+                            image = step.get('image')
+                            image_file = request.files.get(f'image_{step_id}')
+                            if image_file and allowed_file(image_file.filename):
+                                filename = secure_filename(image_file.filename)
+                                ext = filename.rsplit('.', 1)[1].lower()
+                                unique_name = f"{uuid.uuid4().hex}.{ext}"
+                                filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_name)
+                                image_file.save(filepath)
+                                image = f"uploads/{unique_name}"
+                            if title or content or image:
+                                steps.append({
+                                    "type": "lesson",
+                                    "title": title,
+                                    "content": content,
+                                    "image": image
+                                })
                 except (ValueError, IndexError):
                     continue
-
-            # Обработка загрузки изображения
-            if image_file and allowed_file(image_file.filename):
-                filename = secure_filename(image_file.filename)
-                ext = filename.rsplit('.', 1)[1].lower()
-                unique_name = f"{uuid.uuid4().hex}.{ext}"
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_name)
-                image_file.save(filepath)
-                image = f"uploads/{unique_name}"
-
-            if title or content or image:
-                steps.append({
-                    "title": title,
-                    "content": content,
-                    "image": image
-                })
 
         course['steps'] = steps
         save_json(COURSES_FILE, courses)
         return redirect(url_for('course', course_id=course_id))
 
     return render_template('edit_course.html', course=course)
+
 @app.route('/teacher/course/<course_id>/progress')
 def teacher_progress(course_id):
     if not session.get('is_teacher'):
@@ -265,14 +317,11 @@ def teacher_progress(course_id):
     users = load_json(USERS_FILE)
     total_steps = len(course['steps'])
     
-    # Собираем прогресс всех учеников
     progress_data = []
     for username, data in users.items():
-        # Пропускаем учителя, если он в users (а он там не должен быть)
-        if username == 'teacher': 
+        if username == 'teacher':
             continue
         user_progress = data.get('progress', {}).get(course_id, [])
-        # Гарантируем, что это список целых
         completed = set()
         if isinstance(user_progress, list):
             for x in user_progress:
@@ -287,27 +336,11 @@ def teacher_progress(course_id):
             'count': len(completed)
         })
     
-    # Сортируем по имени
     progress_data.sort(key=lambda x: x['username'])
     
     return render_template('teacher_progress.html', course=course, progress_data=progress_data)
-@app.route('/teacher/reset_password/<username>', methods=['POST'])
-def teacher_reset_password(username):
-    if not session.get('is_teacher'):
-        return redirect(url_for('teacher_login'))
-    
-    users = load_json(USERS_FILE)
-    if username not in users:
-        return "Ученик не найден", 404
 
-    # Генерируем простой пароль: имя + 123 (можно усложнить)
-    new_password = username.lower() + "123"
-    users[username]['password'] = hash_password(new_password)
-    save_json(USERS_FILE, users)
-
-    # Возвращаем JSON с новым паролем (только учителю!)
-    return jsonify(success=True, new_password=new_password)
-# --- Запуск приложения ---
-
+# --- Запуск ---
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port, debug=False)

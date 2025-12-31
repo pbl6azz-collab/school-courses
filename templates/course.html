@@ -1,38 +1,79 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>{{ course.title }}</h1>
-<a href="{{ url_for('index') }}">← Назад к курсам</a>
-{% if session.is_teacher %}
-    <p>
-        <a href="{{ url_for('edit_course', course_id=course.id) }}" class="btn">Редактировать курс</a>
-        |
-        <a href="{{ url_for('teacher_progress', course_id=course.id) }}" class="btn">Посмотреть прогресс учеников</a>
-        |
-        <a href="{{ url_for('teacher_logout') }}">Выйти из режима учителя</a>
-    </p>
-{% endif %}<br><br>
 
+<!-- Прогресс-бар -->
+{% if course.steps %}
+  <div class="progress-bar">
+    <div class="progress-fill" style="width: {{ (completed_steps|length * 100 / course.steps|length)|round(0) }}%;"></div>
+  </div>
+  <p>Прогресс: {{ completed_steps|length }} из {{ course.steps|length }} шагов</p>
+{% else %}
+  <p>В этом курсе пока нет шагов.</p>
+{% endif %}
+
+<!-- Навигация -->
+<a href="{{ url_for('index') }}">← Назад к курсам</a>
+
+<!-- Действия для учителя -->
+{% if session.is_teacher %}
+  <p style="margin: 15px 0;">
+    <a href="{{ url_for('edit_course', course_id=course.id) }}" class="btn">Редактировать курс</a>
+    |
+    <a href="{{ url_for('teacher_progress', course_id=course.id) }}" class="btn">Посмотреть прогресс учеников</a>
+    |
+    <a href="{{ url_for('teacher_logout') }}">Выйти из режима учителя</a>
+  </p>
+{% endif %}
+
+<br><br>
+
+<!-- Шаги курса -->
 {% for step in course.steps %}
-    <div class="step {% if loop.index0 in completed_steps %}completed{% endif %}">
-        <strong>Шаг {{ loop.index }}: {{ step.title }}</strong>
+  <div class="step {% if loop.index0 in completed_steps %}completed{% endif %}">
+    <div class="step-number">{{ loop.index }}</div>
+    <div class="step-content">
+      <div class="step-title">{{ step.title }}</div>
+
+      {% if step.type == 'quiz' %}
+        <div style="margin:15px 0;">
+          <p><strong>{{ step.question }}</strong></p>
+          <form id="quiz_form_{{ loop.index0 }}" onsubmit="submitQuiz(event, {{ loop.index0 }}, {{ step.correct }})">
+            {% for option in step.options %}
+              <label style="display: block; margin: 8px 0; padding: 10px; border: 1px solid #ddd; border-radius: 6px; cursor: pointer;">
+                <input type="radio" name="answer_{{ loop.index0 }}" value="{{ loop.index0 }}" required>
+                {{ option }}
+              </label>
+            {% endfor %}
+            <button type="submit" class="btn" style="margin-top: 15px;">Проверить</button>
+          </form>
+          <div id="quiz_result_{{ loop.index0 }}" style="margin-top: 10px; font-weight: bold;"></div>
+        </div>
+      {% else %}
         {% if step.image %}
-            <div style="text-align:center; margin:10px 0;">
-                <img src="{{ url_for('static', filename=step.image) }}" 
-                     style="max-width:100%; height:auto; border:1px solid #ddd; border-radius:4px;">
-            </div>
+          <div style="text-align: center; margin: 15px 0;">
+            <img src="{{ url_for('static', filename=step.image) }}" 
+                 alt="Иллюстрация к шагу {{ loop.index }}"
+                 style="max-width: 100%; height: auto; border-radius: 10px; box-shadow: 0 3px 10px rgba(0,0,0,0.1);">
+          </div>
         {% endif %}
+
         {% if step.content %}
-            <p>{{ step.content }}</p>
+          <div class="step-text">{{ step.content }}</div>
         {% endif %}
-        <button onclick="toggleStep({{ loop.index0 }}, {{ (loop.index0 in completed_steps) | lower }})">
-            {{ 'Скрыть' if loop.index0 in completed_steps else 'Выполнено!' }}
+      {% endif %}
+
+      {% if step.type != 'quiz' %}
+        <button class="{% if loop.index0 in completed_steps %}btn-success{% else %}btn{% endif %}"
+                onclick="toggleStep({{ loop.index0 }}, {{ (loop.index0 in completed_steps) | lower }})">
+          {{ 'Скрыть' if loop.index0 in completed_steps else 'Выполнено!' }}
         </button>
+      {% endif %}
     </div>
+  </div>
 {% endfor %}
 
-{% endblock %}
-
-{% block scripts %}
+<!-- Скрипт для отметки шагов -->
 <script>
 function toggleStep(stepIndex, isCompleted) {
     fetch('/mark_step', {
@@ -43,28 +84,35 @@ function toggleStep(stepIndex, isCompleted) {
             step_index: stepIndex,
             completed: !isCompleted
         })
-    }).then(() => location.reload());
-}
-function toggleStep(stepIndex, isCompleted) {
-    fetch('/mark_step', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            course_id: '{{ course.id }}',
-            step_index: stepIndex,
-            completed: !isCompleted
-        })
     }).then(() => {
-        // Плавная анимация
-        const stepEl = document.querySelectorAll('.step')[stepIndex];
-        if (!isCompleted) {
-            stepEl.style.transform = 'scale(1.02)';
-            stepEl.style.boxShadow = '0 0 20px rgba(76, 201, 240, 0.5)';
-            setTimeout(() => location.reload(), 300);
-        } else {
-            location.reload();
-        }
+        location.reload();
+    }).catch(err => {
+        alert('Ошибка сохранения прогресса');
     });
+}
+
+function submitQuiz(event, stepIndex, correctIndex) {
+    event.preventDefault();
+    const selected = document.querySelector(`input[name="answer_${stepIndex}"]:checked`);
+    const resultDiv = document.getElementById(`quiz_result_${stepIndex}`);
+    if (!selected) return;
+
+    const userAnswer = parseInt(selected.value);
+    if (userAnswer === correctIndex) {
+        resultDiv.innerHTML = '<span style="color:#2ecc71;">✅ Верно!</span>';
+        // Отмечаем шаг как завершённый
+        fetch('/mark_step', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                course_id: '{{ course.id }}',
+                step_index: stepIndex,
+                completed: true
+            })
+        });
+    } else {
+        resultDiv.innerHTML = '<span style="color:#e74c3c;">❌ Неверно. Попробуй ещё!</span>';
+    }
 }
 </script>
 {% endblock %}

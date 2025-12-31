@@ -32,19 +32,46 @@
     {% endfor %}
 
     <!-- Новый шаг -->
-    <div style="margin:25px 0; padding:15px; border:1px dashed #aaa; background:#fafafa; border-radius:6px;">
-        <strong>+ Добавить новый шаг</strong>
-        <input type="hidden" name="step_id" value="new">
+<div style="margin:25px 0; padding:15px; border:1px dashed #aaa; background:#fafafa; border-radius:6px;">
+    <strong>+ Добавить новый шаг</strong>
+    <input type="hidden" name="step_id" value="new">
 
-        <label>Заголовок:</label>
-        <input type="text" name="title_new" placeholder="Например: 'Добавь фон игры'" style="width:100%; padding:6px; margin:4px 0;">
+    <label>Тип шага:</label>
+    <select name="type_new" onchange="toggleQuizFields(this.value)">
+        <option value="lesson">Обычный урок</option>
+        <option value="quiz">Тест</option>
+    </select>
 
+    <label>Заголовок:</label>
+    <input type="text" name="title_new" placeholder="Например: 'Проверь себя'" style="width:100%; padding:6px; margin:4px 0;">
+
+    <!-- Обычный урок -->
+    <div id="lesson_fields">
         <label>Описание:</label>
-        <textarea name="content_new" rows="4" placeholder="Пошаговая инструкция для ученика..." style="width:100%; padding:6px; margin:4px 0;"></textarea>
-
+        <textarea name="content_new" rows="4" placeholder="Пошаговая инструкция..." style="width:100%; padding:6px; margin:4px 0;"></textarea>
         <label>Изображение (опционально):</label>
         <input type="file" name="image_new" accept=".png,.jpg,.jpeg,.gif,.webp">
     </div>
+
+    <!-- Тест -->
+    <div id="quiz_fields" style="display:none; margin-top:15px; padding:15px; background:#f0f8ff; border-radius:6px;">
+        <label>Вопрос:</label>
+        <textarea name="question_new" rows="2" placeholder="Чему равно 2+2?" style="width:100%; padding:6px; margin:4px 0;"></textarea>
+
+        <label>Варианты ответов (по одному в строке):</label>
+        <textarea name="options_new" rows="4" placeholder="4↵5↵6↵7" style="width:100%; padding:6px; margin:4px 0;"></textarea>
+
+        <label>Номер правильного ответа (1–4):</label>
+        <input type="number" name="correct_new" min="1" max="4" value="1" style="width:80px; padding:6px;">
+    </div>
+</div>
+
+<script>
+function toggleQuizFields(type) {
+    document.getElementById('lesson_fields').style.display = type === 'quiz' ? 'none' : 'block';
+    document.getElementById('quiz_fields').style.display = type === 'quiz' ? 'block' : 'none';
+}
+</script>
 
     <button type="submit" style="background:#27ae60; color:white; padding:10px 20px; border:none; border-radius:4px; font-size:16px;">
         Сохранить курс

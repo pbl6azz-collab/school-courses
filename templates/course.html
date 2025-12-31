@@ -45,5 +45,26 @@ function toggleStep(stepIndex, isCompleted) {
         })
     }).then(() => location.reload());
 }
+function toggleStep(stepIndex, isCompleted) {
+    fetch('/mark_step', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            course_id: '{{ course.id }}',
+            step_index: stepIndex,
+            completed: !isCompleted
+        })
+    }).then(() => {
+        // Плавная анимация
+        const stepEl = document.querySelectorAll('.step')[stepIndex];
+        if (!isCompleted) {
+            stepEl.style.transform = 'scale(1.02)';
+            stepEl.style.boxShadow = '0 0 20px rgba(76, 201, 240, 0.5)';
+            setTimeout(() => location.reload(), 300);
+        } else {
+            location.reload();
+        }
+    });
+}
 </script>
 {% endblock %}

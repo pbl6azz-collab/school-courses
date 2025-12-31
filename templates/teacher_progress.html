@@ -24,9 +24,9 @@
                 {% for i in range(course.steps|length) %}
                     <td style="text-align:center;">
                         {% if i in pd.completed %}
-                            ✅
+                            <span style="color:#2ecc71; font-size:1.4em;">✓</span>
                         {% else %}
-                            ❌
+                            <span style="color:#e74c3c; font-size:1.4em;">✗</span>
                         {% endif %}
                     </td>
                 {% endfor %}

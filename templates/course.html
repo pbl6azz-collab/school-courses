@@ -41,7 +41,7 @@
           <form id="quiz_form_{{ loop.index0 }}" onsubmit="submitQuiz(event, {{ loop.index0 }}, {{ step.correct }})">
             {% for option in step.options %}
               <label style="display: block; margin: 8px 0; padding: 10px; border: 1px solid #ddd; border-radius: 6px; cursor: pointer;">
-                <input type="radio" name="answer_{{ loop.index0 }}" value="{{ loop.index0 }}" required>
+                <input type="radio" name="answer_{{ loop.parentloop.index0 }}" value="{{ loop.index0 }}" required>
                 {{ option }}
               </label>
             {% endfor %}
@@ -97,7 +97,7 @@ function submitQuiz(event, stepIndex, correctIndex) {
     const resultDiv = document.getElementById(`quiz_result_${stepIndex}`);
     if (!selected) return;
 
-    const userAnswer = parseInt(selected.value);
+    const userAnswer = parseInt(selected.value, 10);
     if (userAnswer === correctIndex) {
         resultDiv.innerHTML = '<span style="color:#2ecc71;">✅ Верно!</span>';
         // Отмечаем шаг как завершённый

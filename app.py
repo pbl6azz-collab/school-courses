@@ -14,7 +14,7 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # --- Настройки безопасности ---
-TEACHER_PASSWORD = "teacher123"  # ← ОБЯЗАТЕЛЬНО ЗАМЕНИТЕ!
+TEACHER_PASSWORD = os.getenv('TEACHER_PASSWORD', 'default123')
 TEACHER_PASSWORD_HASH = hash_password(TEACHER_PASSWORD)
 
 # --- Инициализация Flask ---

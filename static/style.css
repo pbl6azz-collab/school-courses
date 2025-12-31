@@ -199,3 +199,38 @@ input:focus, textarea:focus {
         padding: 18px;
     }
 }
+/* Стили для тестов */
+.quiz-option:hover {
+    border-color: #4361ee;
+    background-color: #f0f4ff;
+}
+
+.quiz-option.selected {
+    border-color: #4361ee;
+    background-color: #e8f4ff;
+    box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+}
+
+.quiz-option.correct {
+    border-color: #2ecc71;
+    background-color: #e8f7ef;
+    animation: pulseGreen 0.6s;
+}
+
+.quiz-option.incorrect {
+    border-color: #e74c3c;
+    background-color: #fdf2f2;
+    animation: pulseRed 0.6s;
+}
+
+@keyframes pulseGreen {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
+@keyframes pulseRed {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}

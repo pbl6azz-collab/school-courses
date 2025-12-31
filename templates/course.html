@@ -36,28 +36,30 @@
       <div class="step-title">{{ step.title }}</div>
 
       {% if step.type == 'quiz' %}
-        <div style="margin:15px 0;">
-          <p><strong>{{ step.question }}</strong></p>
-          <form id="quiz_form_{{ loop.index0 }}" onsubmit="submitQuiz(event, {{ loop.index0 }}, {{ step.correct }})">
+        <div class="quiz-container" style="margin:25px 0; background:#f8fafc; border-radius:16px; padding:25px; box-shadow:0 4px 12px rgba(0,0,0,0.06);">
+          <h3 style="margin-top:0; color:#2d3748;">{{ step.question }}</h3>
+    
+          <form id="quiz_form_{{ loop.index0 }}" onsubmit="submitQuiz(event, {{ loop.index0 }}, {{ step.correct }})" style="margin-top:20px;">
             {% set step_index = loop.index0 %}
             {% for option in step.options %}
-             <label style="display: block; margin: 8px 0; padding: 10px; border: 1px solid #ddd; border-radius: 6px; cursor: pointer;">
-                <input type="radio" name="answer_{{ step_index }}" value="{{ loop.index0 }}" required>
+              <div class="quiz-option" 
+                   onclick="selectOption(this, {{ step_index }}, {{ loop.index0 }})"
+                   data-index="{{ loop.index0 }}"
+                   style="padding:16px; margin:10px 0; background:#fff; border:2px solid #e2e8f0; border-radius:12px; cursor:pointer; transition:all 0.2s; font-size:1.05rem;">
                 {{ option }}
-              </label>
+              </div>
             {% endfor %}
-            <button type="submit" class="btn" style="margin-top: 15px;">Проверить</button>
+      
+            <input type="hidden" id="selected_answer_{{ step_index }}" name="selected_answer" required>
+      
+            <button type="submit" class="btn" style="margin-top:20px; width:100%; padding:14px; font-size:1.1rem;">
+              Проверить ответ
+            </button>
           </form>
-          <div id="quiz_result_{{ loop.index0 }}" style="margin-top: 10px; font-weight: bold;"></div>
+    
+          <div id="quiz_result_{{ loop.index0 }}" style="margin-top:15px; font-size:1.1rem; font-weight:bold; min-height:28px;"></div>
         </div>
-      {% else %}
-        {% if step.image %}
-          <div style="text-align: center; margin: 15px 0;">
-            <img src="{{ url_for('static', filename=step.image) }}" 
-                 alt="Иллюстрация к шагу {{ loop.index }}"
-                 style="max-width: 100%; height: auto; border-radius: 10px; box-shadow: 0 3px 10px rgba(0,0,0,0.1);">
-          </div>
-        {% endif %}
+      {% endif %}
 
         {% if step.content %}
           <div class="step-text">{{ step.content }}</div>
@@ -92,15 +94,40 @@ function toggleStep(stepIndex, isCompleted) {
     });
 }
 
+<script>
+function selectOption(element, stepIndex, optionIndex) {
+    // Снимаем выделение со всех
+    const options = document.querySelectorAll(`.quiz-option[data-index][onclick*="stepIndex=${stepIndex}"]`);
+    options.forEach(opt => opt.classList.remove('selected'));
+    
+    // Выделяем выбранный
+    element.classList.add('selected');
+    
+    // Сохраняем выбор в скрытое поле
+    document.getElementById(`selected_answer_${stepIndex}`).value = optionIndex;
+}
+
 function submitQuiz(event, stepIndex, correctIndex) {
     event.preventDefault();
-    const selected = document.querySelector(`input[name="answer_${stepIndex}"]:checked`);
-    const resultDiv = document.getElementById(`quiz_result_${stepIndex}`);
-    if (!selected) return;
+    const selectedValue = document.getElementById(`selected_answer_${stepIndex}`).value;
+    
+    if (selectedValue === '') {
+        alert('Пожалуйста, выберите вариант ответа.');
+        return;
+    }
 
-    const userAnswer = parseInt(selected.value, 10);
+    const userAnswer = parseInt(selectedValue, 10);
+    const resultDiv = document.getElementById(`quiz_result_${stepIndex}`);
+    const options = document.querySelectorAll(`.quiz-option[data-index][onclick*="stepIndex=${stepIndex}"]`);
+
+    // Снимаем старые классы
+    options.forEach(opt => {
+        opt.classList.remove('correct', 'incorrect');
+    });
+
     if (userAnswer === correctIndex) {
-        resultDiv.innerHTML = '<span style="color:#2ecc71;">✅ Верно!</span>';
+        resultDiv.innerHTML = '<span style="color:#2ecc71;">✅ Правильно! Молодец!</span>';
+        options[userAnswer].classList.add('correct');
         // Отмечаем шаг как завершённый
         fetch('/mark_step', {
             method: 'POST',
@@ -112,7 +139,9 @@ function submitQuiz(event, stepIndex, correctIndex) {
             })
         });
     } else {
-        resultDiv.innerHTML = '<span style="color:#e74c3c;">❌ Неверно. Попробуй ещё!</span>';
+        resultDiv.innerHTML = '<span style="color:#e74c3c;">❌ Почти! Попробуй ещё раз.</span>';
+        options[userAnswer].classList.add('incorrect');
+        options[correctIndex].classList.add('correct');
     }
 }
 </script>
